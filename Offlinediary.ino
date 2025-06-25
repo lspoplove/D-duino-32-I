@@ -3,12 +3,18 @@
 #include "FS.h"
 #include "SD.h"
 #include "SPI.h"
+#include <Adafruit_NeoPixel.h>
 
 // OLED屏幕定义
 #define OLED_SDA 8
 #define OLED_SCL 9
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+#define LED_PIN   14  
+#define LED_COUNT  1
+  
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
 SH1106Wire display(0x3c, OLED_SDA, OLED_SCL);  // I2C地址通常为0x3C
 
 
@@ -18,7 +24,10 @@ const long displayInterval = 5000;  // 5秒切换一次
 int currentFileIndex = 1;  // 当前显示的文件索引(1-20)
 
 void setup() {
-  Serial.begin(115200);
+  
+  strip.begin();
+  strip.show();
+  strip.setBrightness(50);
   
   // 初始化OLED
   display.init();
@@ -39,12 +48,12 @@ void setup() {
   // 检查文件数量
   int count = countFiles();
   if(count < FILE_COUNT){
-    Serial.print("找到的文件数量不足，期望20个，实际找到");
-    Serial.println(count);
+    display.drawString(0, 0, "Files not enough!");
   }
   
   lastChangeTime = millis();
 }
+
 
 void loop() {
   unsigned long currentTime = millis();
@@ -84,8 +93,7 @@ int countFiles(){
 void displayProverb(String filename){
   File file = SD.open(filename);
   if(!file){
-    Serial.print("无法打开文件: ");
-    Serial.println(filename);
+    display.drawString(0, 0, "Can not open file");
     return;
   }
   
@@ -133,4 +141,23 @@ void displayProverb(String filename){
   
   file.close();
   display.display();
+  rainbow(5); 
+}
+void rainbow(int wait) {
+  // Hue of first pixel runs 5 complete loops through the color wheel.
+  // Color wheel has a range of 65536 but it's OK if we roll over, so
+  // just count from 0 to 5*65536. Adding 256 to firstPixelHue each time
+  // means we'll make 5*65536/256 = 1280 passes through this loop:
+  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
+    // strip.rainbow() can take a single argument (first pixel hue) or
+    // optionally a few extras: number of rainbow repetitions (default 1),
+    // saturation and value (brightness) (both 0-255, similar to the
+    // ColorHSV() function, default 255), and a true/false flag for whether
+    // to apply gamma correction to provide 'truer' colors (default true).
+    strip.rainbow(firstPixelHue);
+    // Above line is equivalent to:
+    // strip.rainbow(firstPixelHue, 1, 255, 255, true);
+    strip.show(); // Update strip with new contents
+    delay(wait);  // Pause for a moment
+  }
 }
